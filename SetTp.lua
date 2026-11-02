@@ -1,6 +1,7 @@
--- Delta: Teleport Mod Menu (Bisa Buka/Tutup & Digeser)
+-- Delta: Teleport Mod Menu (Open/Close + Hotkey + Save/Auto TP)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService") -- Untuk Hotkey
 local lp = Players.LocalPlayer
 
 -- Variabel Data
@@ -10,28 +11,16 @@ local autoTPEnabled = false
 local autoTPInterval = 0.3
 local lastTP = 0
 
+-- Variabel UI
+local isMenuOpen = true
+
 -- ===== GUI =====
 local sg = Instance.new("ScreenGui")
-sg.Name = "TPMenuV2"
+sg.Name = "TPMenuFinal"
 sg.ResetOnSpawn = false
 sg.Parent = lp:WaitForChild("PlayerGui")
 
--- 1. TOMBOL BUKA (Muncul saat menu ditutup)
-local openBtn = Instance.new("TextButton")
-openBtn.Size = UDim2.new(0, 120, 0, 35)
-openBtn.Position = UDim2.new(0, 20, 0, 100)
-openBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
-openBtn.BorderSizePixel = 0
-openBtn.Text = "Buka Menu TP"
-openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-openBtn.Font = Enum.Font.GothamBold
-openBtn.TextSize = 13
-openBtn.Active = true
-openBtn.Draggable = true -- Bisa digeser bebas
-openBtn.Visible = false  -- Sembunyikan awalnya
-openBtn.Parent = sg
-
--- 2. FRAME UTAMA (Menu lengkap)
+-- 1. FRAME UTAMA (Menu lengkap)
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 250, 0, 350)
 main.Position = UDim2.new(0, 20, 0, 100)
@@ -39,6 +28,7 @@ main.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 main.BorderSizePixel = 0
 main.Active = true
 main.Draggable = true -- Bisa digeser bebas
+main.Visible = true
 main.Parent = sg
 
 -- Title Bar
@@ -47,10 +37,10 @@ title.Size = UDim2.new(1, -30, 0, 30)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
 title.BorderSizePixel = 0
-title.Text = "Teleport Menu"
+title.Text = "Teleport Menu (Shift Kanan)"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
-title.TextSize = 15
+title.TextSize = 14
 title.Parent = main
 
 -- Tombol Tutup (X)
@@ -115,7 +105,46 @@ local listLayout = Instance.new("UIListLayout")
 listLayout.Parent = listFrame
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- ===== FUNGSI UTAMA =====
+
+-- 2. TOMBOL BUKA (Floating Button saat menu ditutup)
+local openBtn = Instance.new("TextButton")
+openBtn.Size = UDim2.new(0, 130, 0, 35)
+openBtn.Position = UDim2.new(0, 20, 0, 100)
+openBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 60) -- Warna hijau agar mudah dilihat
+openBtn.BorderSizePixel = 0
+openBtn.Text = "Buka Menu TP"
+openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+openBtn.Font = Enum.Font.GothamBold
+openBtn.TextSize = 13
+openBtn.Active = true
+openBtn.Draggable = true -- Bisa digeser bebas
+openBtn.Visible = false  -- Sembunyikan awalnya (karena menu utama terbuka)
+openBtn.Parent = sg
+
+
+-- ===== FUNGSI BUKA / TUTUP =====
+local function toggleMenu()
+    isMenuOpen = not isMenuOpen
+    main.Visible = isMenuOpen
+    openBtn.Visible = not isMenuOpen
+end
+
+-- Klik tombol X (Tutup)
+closeBtn.MouseButton1Click:Connect(toggleMenu)
+
+-- Klik tombol Buka
+openBtn.MouseButton1Click:Connect(toggleMenu)
+
+-- HOTKEY: Tekan "Right Shift" (Shift Kanan) untuk Buka/Tutup
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        toggleMenu()
+    end
+end)
+
+
+-- ===== FUNGSI TP =====
 local function getHRP()
     local char = lp.Character
     return char and char:FindFirstChild("HumanoidRootPart")
@@ -186,18 +215,6 @@ local function updateList()
 end
 
 -- ===== EVENT HANDLERS =====
--- Logika Buka & Tutup Menu
-closeBtn.MouseButton1Click:Connect(function()
-    main.Visible = false
-    openBtn.Visible = true
-end)
-
-openBtn.MouseButton1Click:Connect(function()
-    main.Visible = true
-    openBtn.Visible = false
-end)
-
--- Save Button
 saveBtn.MouseButton1Click:Connect(function()
     local hrp = getHRP()
     if not hrp then return end
@@ -210,7 +227,6 @@ saveBtn.MouseButton1Click:Connect(function()
     updateList()
 end)
 
--- Auto TP Toggle
 autoBtn.MouseButton1Click:Connect(function()
     if not selectedIndex then
         autoBtn.Text = "Pilih Lokasi Dulu!"

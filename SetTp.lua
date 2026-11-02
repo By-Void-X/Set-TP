@@ -1,33 +1,50 @@
--- Delta: Teleport Mod Menu (Save, Select, Delete, Auto TP)
+-- Delta: Teleport Mod Menu (Bisa Buka/Tutup & Digeser)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 
 -- Variabel Data
 local savedLocations = {}
 local selectedIndex = nil
 local autoTPEnabled = false
-local autoTPInterval = 0.3 -- Jeda antar TP (detik) agar anti-cheat tidak mendeteksi rubber-band
+local autoTPInterval = 0.3
 local lastTP = 0
 
 -- ===== GUI =====
 local sg = Instance.new("ScreenGui")
-sg.Name = "TPMenu"
+sg.Name = "TPMenuV2"
 sg.ResetOnSpawn = false
 sg.Parent = lp:WaitForChild("PlayerGui")
 
+-- 1. TOMBOL BUKA (Muncul saat menu ditutup)
+local openBtn = Instance.new("TextButton")
+openBtn.Size = UDim2.new(0, 120, 0, 35)
+openBtn.Position = UDim2.new(0, 20, 0, 100)
+openBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
+openBtn.BorderSizePixel = 0
+openBtn.Text = "Buka Menu TP"
+openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+openBtn.Font = Enum.Font.GothamBold
+openBtn.TextSize = 13
+openBtn.Active = true
+openBtn.Draggable = true -- Bisa digeser bebas
+openBtn.Visible = false  -- Sembunyikan awalnya
+openBtn.Parent = sg
+
+-- 2. FRAME UTAMA (Menu lengkap)
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 250, 0, 350)
 main.Position = UDim2.new(0, 20, 0, 100)
 main.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 main.BorderSizePixel = 0
 main.Active = true
-main.Draggable = true
+main.Draggable = true -- Bisa digeser bebas
 main.Parent = sg
 
+-- Title Bar
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Size = UDim2.new(1, -30, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(40, 40, 52)
 title.BorderSizePixel = 0
 title.Text = "Teleport Menu"
@@ -35,6 +52,18 @@ title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBold
 title.TextSize = 15
 title.Parent = main
+
+-- Tombol Tutup (X)
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -30, 0, 0)
+closeBtn.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
+closeBtn.BorderSizePixel = 0
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 15
+closeBtn.Parent = main
 
 -- Tombol Save
 local saveBtn = Instance.new("TextButton")
@@ -92,18 +121,15 @@ local function getHRP()
     return char and char:FindFirstChild("HumanoidRootPart")
 end
 
--- Fungsi TP
 local function doTP(cframe)
     local hrp = getHRP()
     if hrp then
         hrp.CFrame = cframe
-        -- Hentikan momentum agar tidak rubber-band
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
     end
 end
 
--- Fungsi Refresh UI List
 local function updateList()
     for _, child in ipairs(listFrame:GetChildren()) do
         if child:IsA("Frame") or child:IsA("TextButton") then
@@ -112,14 +138,12 @@ local function updateList()
     end
 
     for i, data in ipairs(savedLocations) do
-        -- Container per baris
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, -4, 0, 30)
         row.BackgroundColor3 = (selectedIndex == i) and Color3.fromRGB(0, 120, 60) or Color3.fromRGB(50, 50, 62)
         row.BorderSizePixel = 0
         row.Parent = listFrame
 
-        -- Tombol Pilih (Nama Lokasi)
         local selectBtn = Instance.new("TextButton")
         selectBtn.Size = UDim2.new(1, -30, 1, 0)
         selectBtn.BackgroundTransparency = 1
@@ -133,11 +157,9 @@ local function updateList()
         selectBtn.MouseButton1Click:Connect(function()
             selectedIndex = i
             updateList()
-            -- Langsung TP saat dipilih
             doTP(data.cframe)
         end)
 
-        -- Tombol Hapus (X)
         local delBtn = Instance.new("TextButton")
         delBtn.Size = UDim2.new(0, 30, 1, 0)
         delBtn.Position = UDim2.new(1, -30, 0, 0)
@@ -164,6 +186,17 @@ local function updateList()
 end
 
 -- ===== EVENT HANDLERS =====
+-- Logika Buka & Tutup Menu
+closeBtn.MouseButton1Click:Connect(function()
+    main.Visible = false
+    openBtn.Visible = true
+end)
+
+openBtn.MouseButton1Click:Connect(function()
+    main.Visible = true
+    openBtn.Visible = false
+end)
+
 -- Save Button
 saveBtn.MouseButton1Click:Connect(function()
     local hrp = getHRP()
@@ -180,10 +213,9 @@ end)
 -- Auto TP Toggle
 autoBtn.MouseButton1Click:Connect(function()
     if not selectedIndex then
-        -- Jika belum pilih lokasi, beri peringatan visual
         autoBtn.Text = "Pilih Lokasi Dulu!"
         task.wait(1.5)
-        autoBtn.Text = "Auto TP: OFF"
+        autoBtn.Text = "Auto TP: " .. (autoTPEnabled and "ON" or "OFF")
         return
     end
 

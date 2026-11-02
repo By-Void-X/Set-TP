@@ -1,7 +1,7 @@
--- Delta: Teleport Mod Menu (Open/Close + Hotkey + Save/Auto TP)
+-- Delta: Teleport Mod Menu + TP Finis (Open/Close + Hotkey)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService") -- Untuk Hotkey
+local UserInputService = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
 
 -- Variabel Data
@@ -10,9 +10,11 @@ local selectedIndex = nil
 local autoTPEnabled = false
 local autoTPInterval = 0.3
 local lastTP = 0
-
--- Variabel UI
 local isMenuOpen = true
+
+-- Variabel untuk Finis
+local finishPart = nil
+local autoTPFinish = false
 
 -- ===== GUI =====
 local sg = Instance.new("ScreenGui")
@@ -20,18 +22,16 @@ sg.Name = "TPMenuFinal"
 sg.ResetOnSpawn = false
 sg.Parent = lp:WaitForChild("PlayerGui")
 
--- 1. FRAME UTAMA (Menu lengkap)
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 250, 0, 350)
+main.Size = UDim2.new(0, 250, 0, 420) -- Diperbesar untuk fitur baru
 main.Position = UDim2.new(0, 20, 0, 100)
 main.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
 main.BorderSizePixel = 0
 main.Active = true
-main.Draggable = true -- Bisa digeser bebas
+main.Draggable = true
 main.Visible = true
 main.Parent = sg
 
--- Title Bar
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -30, 0, 30)
 title.Position = UDim2.new(0, 0, 0, 0)
@@ -43,7 +43,6 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 title.Parent = main
 
--- Tombol Tutup (X)
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 30, 0, 30)
 closeBtn.Position = UDim2.new(1, -30, 0, 0)
@@ -55,10 +54,33 @@ closeBtn.Font = Enum.Font.GothamBold
 closeBtn.TextSize = 15
 closeBtn.Parent = main
 
--- Tombol Save
+-- === FITUR FINIS ===
+local tpFinishBtn = Instance.new("TextButton")
+tpFinishBtn.Size = UDim2.new(0, 210, 0, 30)
+tpFinishBtn.Position = UDim2.new(0, 20, 0, 35)
+tpFinishBtn.BackgroundColor3 = Color3.fromRGB(150, 80, 0) -- Warna Oranye
+tpFinishBtn.BorderSizePixel = 0
+tpFinishBtn.Text = "TP ke Finis / End"
+tpFinishBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+tpFinishBtn.Font = Enum.Font.GothamBold
+tpFinishBtn.TextSize = 13
+tpFinishBtn.Parent = main
+
+local autoFinishBtn = Instance.new("TextButton")
+autoFinishBtn.Size = UDim2.new(0, 210, 0, 30)
+autoFinishBtn.Position = UDim2.new(0, 20, 0, 70)
+autoFinishBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
+autoFinishBtn.BorderSizePixel = 0
+autoFinishBtn.Text = "Auto TP Finis: OFF"
+autoFinishBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoFinishBtn.Font = Enum.Font.GothamBold
+autoFinishBtn.TextSize = 13
+autoFinishBtn.Parent = main
+-- ==================
+
 local saveBtn = Instance.new("TextButton")
-saveBtn.Size = UDim2.new(0, 210, 0, 35)
-saveBtn.Position = UDim2.new(0, 20, 0, 40)
+saveBtn.Size = UDim2.new(0, 210, 0, 30)
+saveBtn.Position = UDim2.new(0, 20, 0, 110)
 saveBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
 saveBtn.BorderSizePixel = 0
 saveBtn.Text = "Simpan Lokasi Saat Ini (Set TP)"
@@ -67,34 +89,31 @@ saveBtn.Font = Enum.Font.GothamBold
 saveBtn.TextSize = 13
 saveBtn.Parent = main
 
--- Tombol Auto TP
 local autoBtn = Instance.new("TextButton")
-autoBtn.Size = UDim2.new(0, 210, 0, 35)
-autoBtn.Position = UDim2.new(0, 20, 0, 85)
+autoBtn.Size = UDim2.new(0, 210, 0, 30)
+autoBtn.Position = UDim2.new(0, 20, 0, 150)
 autoBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
 autoBtn.BorderSizePixel = 0
-autoBtn.Text = "Auto TP: OFF"
+autoBtn.Text = "Auto TP Save: OFF"
 autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoBtn.Font = Enum.Font.GothamBold
 autoBtn.TextSize = 13
 autoBtn.Parent = main
 
--- Label List
 local listLabel = Instance.new("TextLabel")
 listLabel.Size = UDim2.new(1, -40, 0, 20)
-listLabel.Position = UDim2.new(0, 20, 0, 130)
+listLabel.Position = UDim2.new(0, 20, 0, 190)
 listLabel.BackgroundTransparency = 1
-listLabel.Text = "Daftar Lokasi (Klik untuk pilih):"
+listLabel.Text = "Daftar Lokasi Tersimpan:"
 listLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 listLabel.Font = Enum.Font.Gotham
 listLabel.TextSize = 12
 listLabel.TextXAlignment = Enum.TextXAlignment.Left
 listLabel.Parent = main
 
--- Scrolling Frame untuk List
 local listFrame = Instance.new("ScrollingFrame")
-listFrame.Size = UDim2.new(0, 210, 0, 180)
-listFrame.Position = UDim2.new(0, 20, 0, 155)
+listFrame.Size = UDim2.new(0, 210, 0, 160)
+listFrame.Position = UDim2.new(0, 20, 0, 215)
 listFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 listFrame.BorderSizePixel = 0
 listFrame.ScrollBarThickness = 4
@@ -103,48 +122,35 @@ listFrame.Parent = main
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.Parent = listFrame
-listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
-
--- 2. TOMBOL BUKA (Floating Button saat menu ditutup)
+-- Tombol Buka
 local openBtn = Instance.new("TextButton")
 openBtn.Size = UDim2.new(0, 130, 0, 35)
 openBtn.Position = UDim2.new(0, 20, 0, 100)
-openBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 60) -- Warna hijau agar mudah dilihat
+openBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 60)
 openBtn.BorderSizePixel = 0
 openBtn.Text = "Buka Menu TP"
 openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 openBtn.Font = Enum.Font.GothamBold
 openBtn.TextSize = 13
 openBtn.Active = true
-openBtn.Draggable = true -- Bisa digeser bebas
-openBtn.Visible = false  -- Sembunyikan awalnya (karena menu utama terbuka)
+openBtn.Draggable = true
+openBtn.Visible = false
 openBtn.Parent = sg
 
-
--- ===== FUNGSI BUKA / TUTUP =====
+-- ===== FUNGSI UTAMA =====
 local function toggleMenu()
     isMenuOpen = not isMenuOpen
     main.Visible = isMenuOpen
     openBtn.Visible = not isMenuOpen
 end
 
--- Klik tombol X (Tutup)
 closeBtn.MouseButton1Click:Connect(toggleMenu)
-
--- Klik tombol Buka
 openBtn.MouseButton1Click:Connect(toggleMenu)
-
--- HOTKEY: Tekan "Right Shift" (Shift Kanan) untuk Buka/Tutup
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        toggleMenu()
-    end
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.RightShift then toggleMenu() end
 end)
 
-
--- ===== FUNGSI TP =====
 local function getHRP()
     local char = lp.Character
     return char and char:FindFirstChild("HumanoidRootPart")
@@ -159,11 +165,64 @@ local function doTP(cframe)
     end
 end
 
+-- Fungsi Mencari Part Finis
+local function findFinishPart()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            local n = obj.Name:lower()
+            if n:find("finish") or n:find("end") or n:find("win") or n:find("goal") then
+                return obj
+            end
+        end
+    end
+    return nil
+end
+
+-- Fungsi TP ke Finis
+local function tpToFinish()
+    if not finishPart or not finishPart.Parent then
+        finishPart = findFinishPart()
+    end
+    
+    local hrp = getHRP()
+    if finishPart and hrp then
+        -- Posisi sedikit di atas part agar tidak nyangkut
+        local targetPos = finishPart.Position + Vector3.new(0, 3, 0)
+        doTP(CFrame.new(targetPos))
+    else
+        tpFinishBtn.Text = "Finis Tidak Ditemukan!"
+        task.wait(2)
+        tpFinishBtn.Text = "TP ke Finis / End"
+    end
+end
+
+-- ===== EVENT HANDLERS =====
+tpFinishBtn.MouseButton1Click:Connect(tpToFinish)
+
+autoFinishBtn.MouseButton1Click:Connect(function()
+    autoTPFinish = not autoTPFinish
+    autoFinishBtn.Text = "Auto TP Finis: " .. (autoTPFinish and "ON" or "OFF")
+    autoFinishBtn.BackgroundColor3 = autoTPFinish and Color3.fromRGB(0, 170, 80) or Color3.fromRGB(80, 80, 90)
+    if autoTPFinish then autoTPEnabled = false; autoBtn.Text = "Auto TP Save: OFF"; autoBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90) end
+end)
+
+autoBtn.MouseButton1Click:Connect(function()
+    if not selectedIndex then
+        autoBtn.Text = "Pilih Lokasi Dulu!"
+        task.wait(1.5)
+        autoBtn.Text = "Auto TP Save: " .. (autoTPEnabled and "ON" or "OFF")
+        return
+    end
+    autoTPEnabled = not autoTPEnabled
+    autoBtn.Text = "Auto TP Save: " .. (autoTPEnabled and "ON" or "OFF")
+    autoBtn.BackgroundColor3 = autoTPEnabled and Color3.fromRGB(0, 170, 80) or Color3.fromRGB(80, 80, 90)
+    if autoTPEnabled then autoTPFinish = false; autoFinishBtn.Text = "Auto TP Finis: OFF"; autoFinishBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90) end
+end)
+
+-- (Fungsi updateList, Save, Hapus sama seperti sebelumnya)
 local function updateList()
     for _, child in ipairs(listFrame:GetChildren()) do
-        if child:IsA("Frame") or child:IsA("TextButton") then
-            child:Destroy()
-        end
+        if child:IsA("Frame") or child:IsA("TextButton") then child:Destroy() end
     end
 
     for i, data in ipairs(savedLocations) do
@@ -185,6 +244,7 @@ local function updateList()
         
         selectBtn.MouseButton1Click:Connect(function()
             selectedIndex = i
+            autoTPFinish = false; autoFinishBtn.Text = "Auto TP Finis: OFF"; autoFinishBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 90)
             updateList()
             doTP(data.cframe)
         end)
@@ -202,52 +262,33 @@ local function updateList()
 
         delBtn.MouseButton1Click:Connect(function()
             table.remove(savedLocations, i)
-            if selectedIndex == i then
-                selectedIndex = nil
-            elseif selectedIndex and selectedIndex > i then
-                selectedIndex = selectedIndex - 1
-            end
+            if selectedIndex == i then selectedIndex = nil
+            elseif selectedIndex and selectedIndex > i then selectedIndex = selectedIndex - 1 end
             updateList()
         end)
     end
-
     listFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
 end
 
--- ===== EVENT HANDLERS =====
 saveBtn.MouseButton1Click:Connect(function()
     local hrp = getHRP()
     if not hrp then return end
-
-    local name = "Lokasi " .. (#savedLocations + 1)
-    table.insert(savedLocations, {
-        name = name,
-        cframe = hrp.CFrame
-    })
+    table.insert(savedLocations, { name = "Lokasi " .. (#savedLocations + 1), cframe = hrp.CFrame })
     updateList()
-end)
-
-autoBtn.MouseButton1Click:Connect(function()
-    if not selectedIndex then
-        autoBtn.Text = "Pilih Lokasi Dulu!"
-        task.wait(1.5)
-        autoBtn.Text = "Auto TP: " .. (autoTPEnabled and "ON" or "OFF")
-        return
-    end
-
-    autoTPEnabled = not autoTPEnabled
-    autoBtn.Text = "Auto TP: " .. (autoTPEnabled and "ON" or "OFF")
-    autoBtn.BackgroundColor3 = autoTPEnabled and Color3.fromRGB(0, 170, 80) or Color3.fromRGB(80, 80, 90)
 end)
 
 -- ===== AUTO TP LOOP =====
 RunService.Heartbeat:Connect(function()
-    if not autoTPEnabled or not selectedIndex then return end
     if tick() - lastTP < autoTPInterval then return end
-
-    local data = savedLocations[selectedIndex]
-    if data then
-        doTP(data.cframe)
+    
+    if autoTPFinish then
+        tpToFinish()
         lastTP = tick()
+    elseif autoTPEnabled and selectedIndex then
+        local data = savedLocations[selectedIndex]
+        if data then
+            doTP(data.cframe)
+            lastTP = tick()
+        end
     end
 end)
